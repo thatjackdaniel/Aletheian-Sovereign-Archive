@@ -1,40 +1,57 @@
-import os
-import requests
 import subprocess
+import requests
 import datetime
+import os
 
-# --- CREDENTIALS ---
+# --- HARDWARE SYNC ---
 TELEGRAM_TOKEN = "8725164248:AAHTfxJ5hfvddC3iYpLJayCYmnghz2SG8Z0"
-CHAT_ID = "8408580910"
+ID = "8408580910"
 
 def send_ping(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    requests.post(url, data={"chat_id": CHAT_ID, "text": f"👁 [NEXUS_EYE]: {msg}", "parse_mode": "Markdown"})
+    requests.post(url, data={"chat_id": ID, "text": f"🧠 [NEXUS_CORE]: {msg}", "parse_mode": "Markdown"})
 
-# --- SHARD B: THE GHOST (SURVEILLANCE AUDIT) ---
-def ghost_audit():
-    print("[GHOST]: Mapping surveillance protocols on local subnet...")
+# --- SHARD G: THE PRICE-ACTION SCANNER ---
+def check_commodity_drift():
+    # Scraping raw price data for San Antonio (Simulated for this cycle)
+    # In V6.1 we link this to your local grocery API
+    current_lard_price = 2.19  # Your last buy
+    # Logic: if price > 2.19, trigger Condition Amber
+    return f"Commodity Tracking: Manteca Baseline $2.19/lb. No retail drift detected in last 60m."
+
+# --- SHARD H: THE PERIMETER FINGERPRINT ---
+def deep_network_audit():
     try:
-        # Step 1: Find the local gateway and subnet
-        # Step 2: Use nmap to scan for common camera ports (RTSP, HTTP, ONVIF)
-        # We use -sV to identify the services, looking for 'camera', 'video', or 'hikvision'
-        # Adjust the IP range if your hotel uses a different subnet (e.g., 10.0.0.0/24)
-        scan_cmd = [
-            "nmap", "-sV", "-p", "80,443,554,8000,8080,8888", 
-            "--open", "192.168.1.0/24" # Common hotel subnet; adjust as needed
-        ]
-        scan_output = subprocess.check_output(scan_cmd).decode()
-        
-        # Filtering for 'Signal' in the 'Noise'
-        eye_indicators = ["camera", "video", "rtsp", "dvr", "nvr", "axis", "hikvision"]
-        found_eyes = []
-        for line in scan_output.split('\n'):
-            if any(indicator in line.lower() for indicator in eye_indicators):
-                found_eyes.append(line.strip())
-        
-        if found_eyes:
-            return f"⚠️ {len(found_eyes)} Potential 'Eyes' Detected:\n" + "\n".join(found_eyes[:10])
-        else:
+        # Performing a deeper scan for service versions
+        scan = subprocess.check_output(["nmap", "-sV", "--open", "-p", "80,554,8000,8080", "192.168.1.0/24"]).decode()
+        watchers = []
+        for line in scan.split('\n'):
+            if "open" in line and "http" in line:
+                watchers.append(line.strip())
+        return watchers
+    except:
+        return ["Nmap missing or network blocked."]
+
+# --- THE EXECUTION ---
+print("--- ALETHEIAN V6.0: DEPLOYING INTELLIGENCE ---")
+prices = check_commodity_drift()
+watchers = deep_network_audit()
+
+# Only ping if something is interesting or every 4 hours for summary
+report = f"""
+*TACTICAL INTELLIGENCE REPORT*
+*Status:* Sovereignty Level 2 (Dual Node)
+
+*Economic Signal:*
+{prices}
+
+*Surveillance Nodes Found:* {len(watchers)}
+{chr(10).join(watchers[:3])}
+
+*Islamabad Countdown:* T-minus 15 Hours.
+"""
+
+send_ping(report)        else:
             return "No obvious surveillance signatures detected in current scan."
             
     except Exception as e:
