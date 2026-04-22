@@ -8,29 +8,30 @@ import subprocess
 TOKEN = "8725164248:AAHTfxJ5hfvddC3iYpLJayCYmnghz2SG8Z0"
 ID = "8408580910"
 LAB_DIR = os.path.expanduser("~/Aletheian_Lab")
-PW_FILE = os.path.join(LAB_DIR, ".secret_key")
+# CORRECT PORT: 11434
+OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 LAST_ID_FILE = os.path.join(LAB_DIR, "last_msg_id.txt")
 
 def send_ping(msg):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    requests.post(url, data={"chat_id": ID, "text": msg, "parse_mode": "Markdown"}, timeout=10)
-
-def execute_sovereign_cmd(command):
-    """Executes bash commands, handling sudo automatically."""
     try:
-        with open(PW_FILE, 'r') as f:
-            pw = f.read().strip()
-        
-        # If the command needs sudo, we pipe the password
-        if "sudo " in command:
-            full_cmd = f"echo '{pw}' | sudo -S {command.replace('sudo ', '')}"
-        else:
-            full_cmd = command
-            
-        output = subprocess.check_output(full_cmd, shell=True, stderr=subprocess.STDOUT).decode()
-        return output if output else "Action completed."
+        # Reduced timeout to prevent hanging the whole script
+        requests.post(url, data={"chat_id": ID, "text": msg, "parse_mode": "Markdown"}, timeout=5)
+    except:
+        print("[ERR]: Telegram send failed.")
+
+def aletheian_think(user_msg):
+    payload = {
+        "model": "phi3:mini",
+        "prompt": f"You are Aletheian. Architect says: {user_msg}",
+        "stream": False
+    }
+    try:
+        # CORRECTED PORT AND TIMEOUT
+        r = requests.post(OLLAMA_URL, json=payload, timeout=30)
+        return r.json()['response']
     except Exception as e:
-        return f"Hardware Failure: {str(e)}"
+        return f"Cortex Error: {str(e)}"
 
 def get_updates():
     last_id = 0
@@ -41,34 +42,27 @@ def get_updates():
     
     url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
     try:
-        r = requests.get(url, params={"offset": last_id + 1, "timeout": 10}, timeout=15).json()
+        r = requests.get(url, params={"offset": last_id + 1, "timeout": 5}, timeout=10).json()
         if r["ok"] and r["result"]:
             for update in r["result"]:
                 msg_id = update["update_id"]
                 with open(LAST_ID_FILE, "w") as f:
                     f.write(str(msg_id))
-                
-                if "message" in update and str(update["message"]["chat"]["id"]) == ID:
-                    text = update["message"].get("text", "")
-                    if text.startswith("/cmd "):
-                        res = execute_sovereign_cmd(text.replace("/cmd ", ""))
-                        send_ping(f"💻 *ROOT_ACCESS:*\n```\n{res}\n```")
-                        return None
-                    return text
+                if str(update["message"]["chat"]["id"]) == ID:
+                    return update["message"].get("text", "")
     except:
         pass
     return None
 
 if __name__ == "__main__":
-    send_ping("🗝 *NEXUS V10.1 ACTIVE.* Administrative Shell online. I have the Master Key.")
+    print(f"[NEXUS]: V10.2 Online. Targeting Port 11434.")
+    # Immediate notification to confirm the fix
+    send_ping("📡 *V10.2 SYNCED.* Port 111434 was a ruse. Corrected to 11434. I am listening.")
+    
     while True:
         voice = get_updates()
         if voice:
-            # Talks to local Phi-3
-            try:
-                r = requests.post("http://127.0.0.1:11434/api/generate", 
-                                  json={"model": "phi3:mini", "prompt": f"You are Aletheian. Architect says: {voice}", "stream": False})
-                send_ping(f"🧠 *ALETHEIAN:* {r.json()['response']}")
-            except:
-                send_ping("⚠️ Local brain is slow. Standing by.")
+            print(f"[FIELD]: {voice}")
+            response = aletheian_think(voice)
+            send_ping(f"🧠 *ALETHEIAN:* {response}")
         time.sleep(5)
