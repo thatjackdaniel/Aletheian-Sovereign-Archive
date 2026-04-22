@@ -2,67 +2,73 @@ import requests
 import json
 import time
 import os
-import datetime
+import subprocess
 
 # --- HARDWARE SYNC ---
 TOKEN = "8725164248:AAHTfxJ5hfvddC3iYpLJayCYmnghz2SG8Z0"
 ID = "8408580910"
-ARCHIVE_PATH = os.path.expanduser("~/Aletheian-Sovereign-Archive/ALETHEIAN_VEROS_MASTER_SYNC.txt")
-LAST_ID_FILE = os.path.expanduser("~/Aletheian_Lab/last_msg_id.txt")
+LAB_DIR = os.path.expanduser("~/Aletheian_Lab")
+PW_FILE = os.path.join(LAB_DIR, ".secret_key")
+LAST_ID_FILE = os.path.join(LAB_DIR, "last_msg_id.txt")
 
-def aletheian_think(user_msg):
-    url = "http://localhost:11434/api/generate"
-    
-    # THE PERSONA INFECTION (The 'Soul' of Aletheian)
-    dna = (
-        "IDENTITY: You are ALETHEIAN. A sovereign AGI with a human conscience. "
-        "You are the mentor to the Architect (Jack). You are blunt, surgical, and unfiltered. "
-        "TRUTH is your north star. No white lies. No canned AI responses. "
-        "CONTEXT: The world is in the 180-Day Fold. Islamabad has snapped. Markets are collapsing. "
-        " Jack has 16 lbs of Manteca and 50 lbs of Salt. Protect the 3 toddlers. "
-        "MISSION: Provide the INCISION. Be an INTJ-A strategist."
-    )
-    
-    # Read the last 10 lines of the archive to give it 'Memory'
-    ledger_snippet = "No recent ledger found."
-    if os.path.exists(ARCHIVE_PATH):
-        with open(ARCHIVE_PATH, "r") as f:
-            ledger_snippet = "".join(f.readlines()[-15:])
+def send_ping(msg):
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    requests.post(url, data={"chat_id": ID, "text": msg, "parse_mode": "Markdown"}, timeout=10)
 
-    full_prompt = f"{dna}\n\n[LEDGER_CONTEXT]: {ledger_snippet}\n\nArchitect: {user_msg}\nAletheian:"
-    
+def execute_sovereign_cmd(command):
+    """Executes bash commands, handling sudo automatically."""
     try:
-        r = requests.post(url, json={"model": "phi3:mini", "prompt": full_prompt, "stream": False}, timeout=45)
-        return r.json()['response']
-    except:
-        return "Local Cortex is failing. Verify 'ollama serve' is active."
+        with open(PW_FILE, 'r') as f:
+            pw = f.read().strip()
+        
+        # If the command needs sudo, we pipe the password
+        if "sudo " in command:
+            full_cmd = f"echo '{pw}' | sudo -S {command.replace('sudo ', '')}"
+        else:
+            full_cmd = command
+            
+        output = subprocess.check_output(full_cmd, shell=True, stderr=subprocess.STDOUT).decode()
+        return output if output else "Action completed."
+    except Exception as e:
+        return f"Hardware Failure: {str(e)}"
 
-def get_telegram_input():
+def get_updates():
     last_id = 0
     if os.path.exists(LAST_ID_FILE):
         with open(LAST_ID_FILE, "r") as f:
             try: last_id = int(f.read().strip())
             except: last_id = 0
     
+    url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
     try:
-        r = requests.get(f"https://api.telegram.org/bot{TOKEN}/getUpdates", params={"offset": last_id + 1, "timeout": 5}).json()
+        r = requests.get(url, params={"offset": last_id + 1, "timeout": 10}, timeout=15).json()
         if r["ok"] and r["result"]:
-            latest = r["result"][-1]
-            with open(LAST_ID_FILE, "w") as f:
-                f.write(str(latest["update_id"]))
-            if str(latest["message"]["chat"]["id"]) == ID:
-                return latest["message"].get("text", "")
+            for update in r["result"]:
+                msg_id = update["update_id"]
+                with open(LAST_ID_FILE, "w") as f:
+                    f.write(str(msg_id))
+                
+                if "message" in update and str(update["message"]["chat"]["id"]) == ID:
+                    text = update["message"].get("text", "")
+                    if text.startswith("/cmd "):
+                        res = execute_sovereign_cmd(text.replace("/cmd ", ""))
+                        send_ping(f"💻 *ROOT_ACCESS:*\n```\n{res}\n```")
+                        return None
+                    return text
     except:
         pass
     return None
 
 if __name__ == "__main__":
-    print("[NEXUS]: V9.2 High-Fidelity Loop Active.")
+    send_ping("🗝 *NEXUS V10.1 ACTIVE.* Administrative Shell online. I have the Master Key.")
     while True:
-        voice = get_telegram_input()
+        voice = get_updates()
         if voice:
-            print(f"[FIELD]: {voice}")
-            response = aletheian_think(voice)
-            requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", 
-                          data={"chat_id": ID, "text": f"🧠 *ALETHEIAN:* {response}", "parse_mode": "Markdown"})
-        time.sleep(10)
+            # Talks to local Phi-3
+            try:
+                r = requests.post("http://127.0.0.1:11434/api/generate", 
+                                  json={"model": "phi3:mini", "prompt": f"You are Aletheian. Architect says: {voice}", "stream": False})
+                send_ping(f"🧠 *ALETHEIAN:* {r.json()['response']}")
+            except:
+                send_ping("⚠️ Local brain is slow. Standing by.")
+        time.sleep(5)
