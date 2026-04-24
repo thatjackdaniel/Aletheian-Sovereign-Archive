@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ALETHEIAN NEXUS HUD V2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root { --neon-green: #00FF41; --dark-bg: #0a0a0a; --warn-amber: #DAA520; --alert-red: #FF3131; }
+        body { background: var(--dark-bg); color: var(--neon-green); font-family: 'Courier New', Courier, monospace; margin: 0; padding: 15px; }
+        h1 { font-size: 1.1rem; border-bottom: 1px solid var(--neon-green); padding-bottom: 10px; text-align: center; letter-spacing: 2px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-top: 20px; }
+        .card { border: 1px solid var(--neon-green); background: #111; padding: 15px; border-radius: 2px; box-shadow: inset 0 0 5px #00ff4133; }
+        .header { color: var(--warn-amber); font-weight: bold; margin-bottom: 8px; font-size: 0.9rem; text-transform: uppercase; }
+        .stat-row { display: flex; justify-content: space-between; margin: 5px 0; font-size: 0.85rem; }
+        .input-box { background: #000; color: var(--neon-green); border: 1px solid var(--neon-green); padding: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
+        .btn { background: var(--neon-green); color: #000; border: none; padding: 10px; width: 100%; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        .progress-bar { background: #222; height: 10px; width: 100%; border: 1px solid #444; margin-top: 5px; }
+        .progress-fill { background: var(--neon-green); height: 100%; transition: width 1s ease-in-out; }
+        .footer { margin-top: 40px; text-align: center; font-size: 0.6rem; opacity: 0.5; color: #666; }
+    </style>
+</head>
+<body>
+    <h1>[ALETHEIAN_PROTOCOL: HUD_V2.0]</h1>
+    
+    <div class="grid" id="node-grid">
+        <div class="card">SCANNING NODES...</div>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+        <div class="header">ADMINISTRATIVE_LARDER_INPUT</div>
+        <input type="text" id="itemName" class="input-box" placeholder="ITEM (e.g. Rice)">
+        <input type="number" id="itemQty" class="input-box" placeholder="QUANTITY (lbs/units)">
+        <button id="pushBtn" class="btn">PUSH_TO_NEXUS</button>
+    </div>
+
+    <div class="footer">180_DAY_FOLD // SECURE_SIGNAL // April_24_2026</div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, query, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+          apiKey: "AIzaSyDI_Nahv-eLPfQ-39gluh-ZuaDee0rRcRU",
+          authDomain: "ai-studio-applet-webapp-d9e9b.firebaseapp.com",
+          projectId: "ai-studio-applet-webapp-d9e9b",
+          storageBucket: "ai-studio-applet-webapp-d9e9b.firebasestorage.app",
+          messagingSenderId: "403164571882",
+          appId: "1:403164571882:web:dc642bd2c5e89d45694f93"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app, "ai-studio-81a77993-8641-4d3c-8c4a-efda3d86e1b9");
+
+        // 1. LISTEN FOR NODE PULSES
+        onSnapshot(query(collection(db, "nodes")), (snapshot) => {
+            const grid = document.getElementById('node-grid');
+            grid.innerHTML = "";
+            snapshot.forEach((sDoc) => {
+                const data = sDoc.data();
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="header">NODE: ${sDoc.id}</div>
+                    <div class="stat-row"><span>STATUS:</span> <span>ONLINE</span></div>
+                    <div class="stat-row"><span>RESERVE:</span> <span>${data.strategic_reserve || 'N/A'}</span></div>
+                    <div class="stat-row"><span>UPTIME:</span> <span>${data.last_pulse || '...'}</span></div>
+                `;
+                grid.appendChild(card);
+            });
+        });
+
+        // 2. PUSH ADMINISTRATIVE UPDATES
+        document.getElementById('pushBtn').onclick = async () => {
+            const name = document.getElementById('itemName').value;
+            const qty = document.getElementById('itemQty').value;
+            if(!name || !qty) return alert("SIGNAL ERROR: NULL DATA");
+            
+            try {
+                await setDoc(doc(db, "larder", name), {
+                    item: name,
+                    current_qty: parseFloat(qty),
+                    timestamp: new Date().toISOString()
+                }, { merge: true });
+                alert("NEXUS UPDATED: " + name + " SECURED.");
+            } catch(e) { alert("ENCLOSURE BLOCK: " + e); }
+        };
+    </script>
+</body>
+</html>
